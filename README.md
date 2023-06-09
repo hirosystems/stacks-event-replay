@@ -29,13 +29,13 @@ $ make init
 1. Download a TSV file from the Hiro archive.
 
 ```shell
-$ curl -L https://archive.hiro.so/testnet/stacks-blockchain-api/testnet-stacks-blockchain-api-latest.gz -o ./testnet-stacks-blockchain-api-latest
+$ curl -L https://archive.hiro.so/testnet/stacks-blockchain-api/testnet-stacks-blockchain-api-latest.gz -o ./testnet-stacks-blockchain-api-latest.gz
 ```
 
 2. Run the parquet generator using the TSV file as input
 
 ```shell
-$ python3 ./parquet_generator/main.py --tsv-file testnet-stacks-blockchain-api-latest
+$ python3 ./parquet_generator/main.py --tsv-file testnet-stacks-blockchain-api-latest.gz
 ```
 
 A file with an extension `.parquet.gz` will be generated and ready to be used by the events ingestor component.
