@@ -17,7 +17,7 @@ class ParquetGenerator:
 
     def to_parquet(self) -> None:
         start_time = time.time()
-        dataframe = pd.read_table(self.tsv_path)
+        dataframe = pd.read_table(self.tsv_path, compression='gzip', header=None)
         end_time = time.time()
         logger.info('[stacks-event-replay] reading %s TSV file finished in %s seconds', self.tsv_path, end_time - start_time)
 
