@@ -35,10 +35,10 @@ $ curl -L https://archive.hiro.so/testnet/stacks-blockchain-api/testnet-stacks-b
 2. Run the parquet generator using the TSV file as input
 
 ```shell
-$ python3 ./parquet_generator/main.py --tsv-file testnet-stacks-blockchain-api-latest.gz
+$ python3 -m parquet_generator --tsv-file testnet-stacks-blockchain-api-latest.gz
 ```
 
-A file with an extension `.parquet.gz` will be generated and ready to be used by the events ingestor component.
+An `events` folder is generated to contain a `dataset` that consists into subfolders and partitioned Parquet files for each event present on the original TSV file.
 
 ### Running the Events Ingestor
 
