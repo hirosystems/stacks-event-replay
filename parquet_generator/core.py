@@ -54,7 +54,7 @@ class ParquetGenerator:
         """
 
         start_time = time.time()
-        new_block_dataset = ds.dataset('events/new_block/', format="parquet")
+        new_block_dataset = ds.dataset('events/new_block/part-0.parquet', format="parquet")
         end_time = time.time()
         logger.info('[stacks-event-replay] reading new_block dataset finished in %s seconds', end_time - start_time)
 

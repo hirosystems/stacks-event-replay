@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     # -- process new_block dataset
     new_block_dataset = gen.get_new_block_dataset()
-    NewBlockProcessor(new_block_dataset).to_canonical()
+    NewBlockProcessor(new_block_dataset).to_canonical().save_dataset()
 
     # -- new_burn_blocks
     # new_burn_blocks = gen.get_new_burn_block_dataset()
