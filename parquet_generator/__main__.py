@@ -1,11 +1,8 @@
 import sys
 import getopt
 
-sys.path.insert(0, '/processors/new_block_processor/')
-
-"""Parquet Generator entrypoint"""
 from .core import ParquetGenerator
-from .new_block_processor import NewBlockProcessor
+from parquet_generator.processors.new_block_processor import NewBlockProcessor
 
 if __name__ == "__main__":
     tsv_file = ''
