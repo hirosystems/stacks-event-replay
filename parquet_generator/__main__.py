@@ -3,6 +3,7 @@ import getopt
 
 from .core import ParquetGenerator
 from parquet_generator.processors.new_block_processor import NewBlockProcessor
+from parquet_generator.processors.new_burn_block_processor import NewBurnBlockProcessor
 
 if __name__ == "__main__":
     tsv_file = ''
@@ -23,5 +24,5 @@ if __name__ == "__main__":
     NewBlockProcessor(new_block_dataset).to_canonical().save_dataset()
 
     # -- new_burn_blocks
-    # new_burn_blocks = gen.get_new_burn_block_dataset()
-    # print(new_burn_blocks.read().to_pandas())
+    new_burn_blocks_dataset = gen.get_new_burn_block_dataset()
+    NewBurnBlockProcessor(new_burn_blocks_dataset).to_canonical().save_dataset()

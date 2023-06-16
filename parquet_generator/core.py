@@ -66,7 +66,7 @@ class ParquetGenerator:
         """
 
         start_time = time.time()
-        new_burn_block_dataset = pq.ParquetDataset('events/new_burn_block/', use_legacy_dataset=False)
+        new_burn_block_dataset = ds.dataset('events/new_burn_block/', format='parquet')
         end_time = time.time()
         logger.info('[stacks-event-replay] reading new_burn_block dataset finished in %s seconds', end_time - start_time)
 
