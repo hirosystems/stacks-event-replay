@@ -15,7 +15,7 @@ class NewBurnBlockProcessor:
         self.dataset = dataset
 
     def to_canonical(self):
-        logger.info('[stacks-event-replay] /new_burn_block event processor started')
+        logger.info('[stacks-event-replay] NEW_BURN_BLOCK event processor started')
 
         start_time = time.time()
         burn_block_canonical_count = 1
@@ -50,7 +50,7 @@ class NewBurnBlockProcessor:
         end_time = time.time()
         logger.info('[stacks-event-replay] canonical......: %s', burn_block_canonical_count)
         logger.info('[stacks-event-replay] orphaned.......: %s', burn_block_orphan_count)
-        logger.info('[stacks-event-replay] /new_burn_block event processor finished in %s seconds', end_time - start_time)
+        logger.info('[stacks-event-replay] NEW_BURN_BLOCK event processor finished in %s seconds', end_time - start_time)
         return self
 
     def save_dataset(self):

@@ -5,6 +5,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pyarrow.dataset as ds
 
+import csv
+
 logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
@@ -14,8 +16,7 @@ class ParquetGenerator:
     """
 
     def __init__(self, tsv_path) -> None:
-        logger.info('[stacks-event-replay] Parquet partitions generator')
-        self.name = 'Stacks Event Replay'
+        logger.info('[stacks-event-replay] reorganization of Stacks blockchain events into Parquet files')
         self.tsv_path = tsv_path
 
     def dataframe(self) -> pd.DataFrame:
@@ -30,8 +31,9 @@ class ParquetGenerator:
             header=None,
             names=['id', 'timestamp', 'event', 'payload']
         )
+
         end_time = time.time()
-        logger.info('[stacks-event-replay] reading %s TSV file finished in %s seconds', self.tsv_path, end_time - start_time)
+        logger.info('[stacks-event-replay] partitioning %s TSV file finished in %s seconds', self.tsv_path, end_time - start_time)
 
         return dataframe
 
@@ -56,7 +58,7 @@ class ParquetGenerator:
         start_time = time.time()
         new_block_dataset = ds.dataset('events/new_block/part-0.parquet', format="parquet")
         end_time = time.time()
-        logger.info('[stacks-event-replay] reading new_block dataset finished in %s seconds', end_time - start_time)
+        logger.info('[stacks-event-replay] reading NEW_BLOCK dataset finished in %s seconds', end_time - start_time)
 
         return new_block_dataset
 
@@ -66,8 +68,8 @@ class ParquetGenerator:
         """
 
         start_time = time.time()
-        new_burn_block_dataset = ds.dataset('events/new_burn_block/', format='parquet')
+        new_burn_block_dataset = ds.dataset('events/new_burn_block/part-0.parquet', format='parquet')
         end_time = time.time()
-        logger.info('[stacks-event-replay] reading new_burn_block dataset finished in %s seconds', end_time - start_time)
+        logger.info('[stacks-event-replay] reading NEW_BURN_BLOCK dataset finished in %s seconds', end_time - start_time)
 
         return new_burn_block_dataset

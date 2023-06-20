@@ -17,6 +17,7 @@ if __name__ == "__main__":
 
     # -- dataframe partitioning
     dataframe = gen.dataframe()
+    dataframe.sort_index(ascending=False, inplace=True)
     gen.partition(dataframe)
 
     # -- process new_block dataset

@@ -15,31 +15,38 @@ class NewBlockProcessor:
         self.dataset = dataset
 
     def to_canonical(self):
-        logger.info('[stacks-event-replay] /new_block event processor started')
+        logger.info('[stacks-event-replay] NEW_BLOCK event processor started')
 
         start_time = time.time()
-        forks = 0;
+        block_canonical_count = 0
+        block_orphan_count = 0
 
-        # extract payload to a table on reverse order
-        reverse_payload = self.dataset.sort_by([('id', 'descending')]).to_table(['id', 'payload'])
-        parent = json.loads(reverse_payload[1][0].as_py())['parent_index_block_hash']
+        dataframe = self.dataset.to_table().to_pandas()
+        dataframe.sort_index(ascending=False, inplace=True)
 
-        dataframe = reverse_payload.to_pandas()
+        parent_index = json.loads(dataframe.iloc[0]['payload'])['parent_index_block_hash']
+
+        logger.info('[stacks-event-replay] /new_block: %s', len(dataframe.index))
         for i, frame in dataframe.iloc[1:].iterrows():
-            idx = json.loads(frame['payload'])['index_block_hash']
-            if idx != parent:
-                forks += 1
-                parent = json.loads(frame['payload'])['parent_index_block_hash']
+            payload = json.loads(frame['payload'])
+            index = payload['index_block_hash']
+
+            if parent_index == index:
+                block_canonical_count += 1
+                # TODO memo microblock
+                if payload['block_height'] != 1: # not genesis
+                    parent_index = payload['parent_index_block_hash']
+            else:
+                block_orphan_count += 1
                 dataframe.drop(i, inplace=True)
                 continue
 
-            parent = json.loads(frame['payload'])['parent_index_block_hash']
-
         self.dataset = pa.Table.from_pandas(dataframe)
 
-        logger.info('[stacks-event-replay] %s forks detected in the blockchain data', forks)
         end_time = time.time()
-        logger.info('[stacks-event-replay] /new_block event processor finished in %s seconds', end_time - start_time)
+        logger.info('[stacks-event-replay] canonical.: %s', block_canonical_count)
+        logger.info('[stacks-event-replay] orphaned..: %s', block_orphan_count)
+        logger.info('[stacks-event-replay] NEW_BLOCK event processor finished in %s seconds', end_time - start_time)
         return self
 
     def save_dataset(self):
