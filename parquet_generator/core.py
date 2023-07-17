@@ -1,4 +1,6 @@
 import logging
+import array
+import json
 import time
 import pandas as pd
 import pyarrow as pa
@@ -31,6 +33,30 @@ class ParquetGenerator:
             header=None,
             names=['id', 'timestamp', 'event', 'payload']
         )
+
+        blockHeight = [];
+        index_block_hashes = []
+        parent_index_block_hashes = []
+
+        for i, frame in dataframe.iterrows():
+            payload = json.loads(frame['payload'])
+            if frame['event'] == '/new_block':
+                blockHeight.append(str(payload['block_height']));
+                index_block_hashes.append(payload['index_block_hash'])
+                parent_index_block_hashes.append(payload['parent_index_block_hash'])
+
+            elif frame['event'] == '/new_microblocks':
+                blockHeight.append('');
+                index_block_hashes.append('')
+                parent_index_block_hashes.append(payload['parent_index_block_hash'])
+            else:
+              blockHeight.append('');
+              index_block_hashes.append('')
+              parent_index_block_hashes.append('')
+
+        dataframe.insert(4, 'block_height', blockHeight)
+        dataframe.insert(5, 'index_block_hash', index_block_hashes)
+        dataframe.insert(6, 'parent_index_block_hash', parent_index_block_hashes)
 
         end_time = time.time()
         logger.info('[stacks-event-replay] partitioning %s TSV file finished in %s seconds', self.tsv_path, end_time - start_time)
