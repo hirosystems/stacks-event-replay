@@ -33,7 +33,6 @@ class NewBlockProcessor:
 
             if parent_index == index:
                 block_canonical_count += 1
-                # TODO memo microblock
                 if payload['block_height'] != 1: # not genesis
                     parent_index = payload['parent_index_block_hash']
             else:

@@ -37,6 +37,7 @@ class ParquetGenerator:
         blockHeight = [];
         index_block_hashes = []
         parent_index_block_hashes = []
+        event_hashes = []
 
         for i, frame in dataframe.iterrows():
             payload = json.loads(frame['payload'])
@@ -44,19 +45,38 @@ class ParquetGenerator:
                 blockHeight.append(str(payload['block_height']));
                 index_block_hashes.append(payload['index_block_hash'])
                 parent_index_block_hashes.append(payload['parent_index_block_hash'])
-
+                event_hashes.append('/new_block')
             elif frame['event'] == '/new_microblocks':
                 blockHeight.append('');
                 index_block_hashes.append('')
                 parent_index_block_hashes.append(payload['parent_index_block_hash'])
+                event_hashes.append('/new_microblocks')
+            elif frame['event'] == '/new_burn_block':
+                blockHeight.append('');
+                index_block_hashes.append('')
+                parent_index_block_hashes.append('')
+                event_hashes.append('/new_burn_block')
+            elif frame['event'] == '/new_mempool_tx':
+                blockHeight.append('');
+                index_block_hashes.append('')
+                parent_index_block_hashes.append('')
+                event_hashes.append('/new_mempool_tx')
+            elif frame['event'] == '/drop_mempool_tx':
+                blockHeight.append('');
+                index_block_hashes.append('')
+                parent_index_block_hashes.append('')
+                event_hashes.append('/drop_mempool_tx')
             else:
+              print(payload)
               blockHeight.append('');
               index_block_hashes.append('')
               parent_index_block_hashes.append('')
+              event_hashes.append('/attachments/new')
 
         dataframe.insert(4, 'block_height', blockHeight)
         dataframe.insert(5, 'index_block_hash', index_block_hashes)
         dataframe.insert(6, 'parent_index_block_hash', parent_index_block_hashes)
+        dataframe.insert(7, 'method', event_hashes)
 
         end_time = time.time()
         logger.info('[stacks-event-replay] partitioning %s TSV file finished in %s seconds', self.tsv_path, end_time - start_time)

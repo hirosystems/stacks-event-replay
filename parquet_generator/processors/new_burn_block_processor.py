@@ -22,7 +22,7 @@ class NewBurnBlockProcessor:
         burn_block_orphan_count = 0
 
         # extract payload to a table on reverse order
-        reverse_payload = self.dataset.sort_by([('id', 'descending')]).to_table(['id', 'payload'])
+        reverse_payload = self.dataset.sort_by([('id', 'descending')]).to_table(['id', 'payload', 'method'])
         burn_block_hash = json.loads(reverse_payload[1][0].as_py())['burn_block_hash']
         burn_block_height = json.loads(reverse_payload[1][0].as_py())['burn_block_height']
 
