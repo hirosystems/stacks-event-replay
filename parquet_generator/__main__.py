@@ -1,7 +1,7 @@
 import sys
 import getopt
 
-from .core import ParquetGenerator
+from .core import CoreEventsProcessor
 from parquet_generator.processors.new_block_processor import NewBlockProcessor
 from parquet_generator.processors.new_burn_block_processor import NewBurnBlockProcessor
 
@@ -13,17 +13,21 @@ if __name__ == "__main__":
         if opt in ('--tsv-file'):
             tsv_file = arg
 
-    gen = ParquetGenerator(tsv_file)
+    processor = CoreEventsProcessor(tsv_file)
+    df_main = processor.main_dataframe()
+    df_to_reorg, df_remainder = processor.split(df_main)
 
-    # -- dataframe partitioning
-    dataframe = gen.dataframe()
-    dataframe.sort_index(ascending=False, inplace=True)
-    gen.partition(dataframe)
+    # reverse and partition events to be re-orged
+    df_to_reorg.sort_index(ascending=False, inplace=True)
+    processor.partition(df_to_reorg)
 
-    # -- process new_block dataset
-    new_block_dataset = gen.get_new_block_dataset()
-    NewBlockProcessor(new_block_dataset).to_canonical().save_dataset()
+    # create a parquet file of remainder events
+    processor.to_parquet(df_remainder)
 
-    # -- new_burn_blocks
-    new_burn_blocks_dataset = gen.get_new_burn_block_dataset()
-    NewBurnBlockProcessor(new_burn_blocks_dataset).to_canonical().save_dataset()
+    # process new_block events to canonical data
+    new_block_data = processor.get_new_block_dataset()
+    NewBlockProcessor(new_block_data).to_canonical().save_dataset()
+
+    # process new_burn_block events to canonical data
+    new_burn_blocks_data = processor.get_new_burn_block_dataset()
+    NewBurnBlockProcessor(new_burn_blocks_data).to_canonical().save_dataset()
