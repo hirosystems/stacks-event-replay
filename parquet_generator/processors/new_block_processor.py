@@ -16,9 +16,9 @@ class NewBlockProcessor:
 
     def to_canonical(self):
         logger.info('[stacks-event-replay] NEW_BLOCK event processor started')
+        start_time = time.perf_counter()
 
-        start_time = time.time()
-        block_canonical_count = 0
+        canonical_indexes = []
         block_orphan_count = 0
 
         dataframe = self.dataset.to_table().to_pandas()
@@ -32,7 +32,7 @@ class NewBlockProcessor:
             index = payload['index_block_hash']
 
             if parent_index == index:
-                block_canonical_count += 1
+                canonical_indexes.append(index)
                 if payload['block_height'] != 1: # not genesis
                     parent_index = payload['parent_index_block_hash']
             else:
@@ -42,11 +42,12 @@ class NewBlockProcessor:
 
         self.dataset = pa.Table.from_pandas(dataframe)
 
-        end_time = time.time()
-        logger.info('[stacks-event-replay] canonical.: %s', block_canonical_count)
+        end_time = time.perf_counter()
+        logger.info(f"[stacks-event-replay] canonical.: {len(canonical_indexes)}")
         logger.info('[stacks-event-replay] orphaned..: %s', block_orphan_count)
-        logger.info('[stacks-event-replay] NEW_BLOCK event processor finished in %s seconds', end_time - start_time)
-        return self
+        logger.info(f'[stacks-event-replay] NEW_BLOCK event processor finished in {end_time - start_time:0.4f} seconds')
+
+        return canonical_indexes
 
     def save_dataset(self):
         ds.write_dataset(

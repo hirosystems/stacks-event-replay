@@ -17,7 +17,7 @@ class NewBurnBlockProcessor:
     def to_canonical(self):
         logger.info('[stacks-event-replay] NEW_BURN_BLOCK event processor started')
 
-        start_time = time.time()
+        start_time = time.perf_counter()
         burn_block_canonical_count = 1
         burn_block_orphan_count = 0
 
@@ -47,10 +47,10 @@ class NewBurnBlockProcessor:
 
         self.dataset = pa.Table.from_pandas(dataframe)
 
-        end_time = time.time()
+        end_time = time.perf_counter()
         logger.info('[stacks-event-replay] canonical......: %s', burn_block_canonical_count)
         logger.info('[stacks-event-replay] orphaned.......: %s', burn_block_orphan_count)
-        logger.info('[stacks-event-replay] NEW_BURN_BLOCK event processor finished in %s seconds', end_time - start_time)
+        logger.info(f"[stacks-event-replay] NEW_BURN_BLOCK event processor finished in {end_time - start_time:0.4f} seconds")
         return self
 
     def save_dataset(self):
