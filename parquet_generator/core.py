@@ -191,8 +191,9 @@ class CoreEventsProcessor:
         logger.info(f"[stacks-event-replay] ---| Splitting main Dataframe |---")
         # Limit of block_height to be replayed.
         # After this limit, events will be processed by regular HTTP POSTS.
+        rewind_blocks = 256
         max_block_height = df_main['block_height'].dropna().astype(int).max()
-        block_height_limit = str(max_block_height - 256)
+        block_height_limit = str(max_block_height - rewind_blocks)
 
         # Split dataframe into two parts.
         # 1 - Events to be re-orged.
@@ -201,6 +202,8 @@ class CoreEventsProcessor:
         df_to_reorg = df_main.iloc[:row_index_limit, :].copy(deep=False)
         df_remainder = df_main.iloc[row_index_limit:, :]
 
+        logger.info(f"[stacks-event-replay] block height present: {max_block_height}")
+        logger.info(f"[stacks-event-replay] rewinding {rewind_blocks} blocks")
         logger.info(f"[stacks-event-replay] events will be reorged until block height: {block_height_limit}")
 
         return df_to_reorg, df_remainder
