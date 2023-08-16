@@ -1,6 +1,5 @@
 ---
 branches: ["master"]
-preset: "@semantic-release/python"
 tagFormat: "${version}"
 plugins:
   - "@semantic-release/commit-analyzer"
