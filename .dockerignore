@@ -1,2 +1,5 @@
 /events
 **/*.Dockerfile
+.git*
+.dockerignore
+dockerfiles/
