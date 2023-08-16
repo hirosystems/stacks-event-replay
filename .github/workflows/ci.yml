@@ -5,7 +5,7 @@ on:
     branches:
       - master
       - main
-      - devlop
+      - develop
     tags-ignore:
       - "**"
     paths-ignore:
@@ -13,7 +13,7 @@ on:
   pull_request:
 
 jobs:
-  build-publish:
+  build-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -22,22 +22,32 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Semantic Release
-        uses: cycjimmy/semantic-release-action@v3
-        id: semantic
-        # Only run on non-PR events or only PRs that aren't from forks
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-          SEMANTIC_RELEASE_PACKAGE: ${{ github.event.repository.name }}
+      - name: Set Up Python
+        uses: actions/setup-python@v2
         with:
-          semantic_version: 19
-          extra_plugins: |
-            @semantic-release/changelog
-            @semantic-release/git
-            @semantic-release/exec
-            conventional-changelog-conventionalcommits
+          python-version: 3.8
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+#      - name: Semantic Release
+#        uses: cycjimmy/semantic-release-action@v3
+#        id: semantic
+#        # Only run on non-PR events or only PRs that aren't from forks
+#        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+#          NPM_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
+#          SEMANTIC_RELEASE_PACKAGE: ${{ github.event.repository.name }}
+#        with:
+#          semantic_version: 19
+#          extra_plugins: |
+#            @semantic-release/changelog
+#            @semantic-release/git
+#            @semantic-release/exec
+#            conventional-changelog-conventionalcommits
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
