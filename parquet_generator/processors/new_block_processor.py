@@ -12,10 +12,11 @@ class NewBlockProcessor:
     """New Block Processor"""
 
     def __init__(self, dataset) -> None:
+        logger.info('[stacks-event-replay] ---| Events reorganization |---')
         self.dataset = dataset
 
     def to_canonical(self):
-        logger.info('[stacks-event-replay] NEW_BLOCK event processor started')
+        logger.info('[stacks-event-replay] NEW_BLOCK reorg started')
         start_time = time.perf_counter()
 
         canonical_indexes = []
@@ -26,7 +27,7 @@ class NewBlockProcessor:
 
         parent_index = json.loads(dataframe.iloc[0]['payload'])['parent_index_block_hash']
 
-        logger.info('[stacks-event-replay] /new_block: %s', len(dataframe.index))
+        logger.info('[stacks-event-replay] total: %s', len(dataframe.index))
         for i, frame in dataframe.iloc[1:].iterrows():
             payload = json.loads(frame['payload'])
             index = payload['index_block_hash']
@@ -43,9 +44,9 @@ class NewBlockProcessor:
         self.dataset = pa.Table.from_pandas(dataframe)
 
         end_time = time.perf_counter()
-        logger.info(f"[stacks-event-replay] canonical.: {len(canonical_indexes)}")
-        logger.info('[stacks-event-replay] orphaned..: %s', block_orphan_count)
-        logger.info(f'[stacks-event-replay] NEW_BLOCK event processor finished in {end_time - start_time:0.4f} seconds')
+        logger.info(f"[stacks-event-replay] canonical: {len(canonical_indexes) + 1}")
+        logger.info('[stacks-event-replay] orphaned: %s', block_orphan_count)
+        logger.info(f'[stacks-event-replay] finished in: {end_time - start_time:0.4f} seconds')
 
         return canonical_indexes
 

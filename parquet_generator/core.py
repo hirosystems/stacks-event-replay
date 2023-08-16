@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class CoreEventsProcessor:
     def __init__(self, tsv_path) -> None:
-        logger.info('[stacks-event-replay] Stacks blockchain events reorganization')
+        logger.info('[stacks-event-replay] Stacks events reorganization into parquet files')
 
         self.tsv_path = tsv_path
         self.block_hashes = deque()
@@ -118,15 +118,16 @@ class CoreEventsProcessor:
             existing_data_behavior='overwrite_or_ignore'
         )
 
-        logger.info("[stacks-event-replay] Summary from TSV WITHOUT SPLIT:")
-        logger.info(f"[stacks-event-replay] TSV lines count.........: {self.tsv_lines_count}")
-        logger.info(f"[stacks-event-replay] NEW_BLOCK canonical.....: {self.block_canonical_count}")
-        logger.info(f"[stacks-event-replay] NEW_BLOCK orphaned......: {self.block_orphan_count}")
-        logger.info(f"[stacks-event-replay] NEW_BURN_BLOCK canonical: {self.burn_block_canonical_count}")
-        logger.info(f"[stacks-event-replay] NEW_BURN_BLOCK orphaned.: {self.burn_block_orphan_count}")
+        logger.info("[stacks-event-replay] ---| TSV file analysis |---")
+        logger.info(f"[stacks-event-replay] File: {self.tsv_path}")
+        logger.info(f"[stacks-event-replay] Lines count: {self.tsv_lines_count}")
+        logger.info(f"[stacks-event-replay] NEW_BLOCK events canonical: {self.block_canonical_count}")
+        logger.info(f"[stacks-event-replay] NEW_BLOCK events orphaned: {self.block_orphan_count}")
+        logger.info(f"[stacks-event-replay] NEW_BURN_BLOCK events canonical: {self.burn_block_canonical_count}")
+        logger.info(f"[stacks-event-replay] NEW_BURN_BLOCK events orphaned: {self.burn_block_orphan_count}")
 
     def prepare_dataframe(self) -> pd.DataFrame:
-        logger.info('[stacks-event-replay] Preparing Dataframe from TSV file: %s', self.tsv_path)
+        logger.info('[stacks-event-replay] ---| Preparing main Dataframe |---')
         start_time = time.perf_counter()
 
         dataframe = pd.read_table(
@@ -182,11 +183,12 @@ class CoreEventsProcessor:
         dataframe.insert(7, 'method', event_hashes)
 
         end_time = time.perf_counter()
-        logger.info(f"[stacks-event-replay] Dataframe ready in {end_time - start_time:0.4f} seconds")
+        logger.info(f"[stacks-event-replay] finished in: {end_time - start_time:0.4f} seconds")
 
         return dataframe
 
     def split(self, df_main):
+        logger.info(f"[stacks-event-replay] ---| Splitting main Dataframe |---")
         # Limit of block_height to be replayed.
         # After this limit, events will be processed by regular HTTP POSTS.
         max_block_height = df_main['block_height'].dropna().astype(int).max()
@@ -199,6 +201,8 @@ class CoreEventsProcessor:
         df_to_reorg = df_main.iloc[:row_index_limit, :].copy(deep=False)
         df_remainder = df_main.iloc[row_index_limit:, :]
 
+        logger.info(f"[stacks-event-replay] events will be reorged until block height: {block_height_limit}")
+
         return df_to_reorg, df_remainder
 
     def partition(self, df) -> None:
@@ -207,7 +211,7 @@ class CoreEventsProcessor:
         The partitions are based on the 'event' column.
         """
 
-        logger.info('[stacks-event-replay] Partitioning Dataframe')
+        logger.info('[stacks-event-replay] ---| Partitioning main Dataframe |---')
         start_time = time.perf_counter()
 
         df_reversed = df.sort_index(ascending=False)
@@ -221,9 +225,10 @@ class CoreEventsProcessor:
         )
 
         end_time = time.perf_counter()
-        logger.info(f'[stacks-event-replay] Partitioning finished in {end_time - start_time:0.4f} seconds')
+        logger.info(f'[stacks-event-replay] finished in: {end_time - start_time:0.4f} seconds')
 
     def to_parquet(self, dataframe) -> None:
+        logger.info('[stacks-event-replay] ---| Create parquet for remainder events |---')
         table = pa.Table.from_pandas(dataframe)
         ds.write_dataset(
             table,

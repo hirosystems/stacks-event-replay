@@ -15,7 +15,7 @@ class NewBurnBlockProcessor:
         self.dataset = dataset
 
     def to_canonical(self):
-        logger.info('[stacks-event-replay] NEW_BURN_BLOCK event processor started')
+        logger.info('[stacks-event-replay] NEW_BURN_BLOCK reorg started')
 
         start_time = time.perf_counter()
         burn_block_canonical_count = 1
@@ -27,7 +27,7 @@ class NewBurnBlockProcessor:
         burn_block_height = json.loads(reverse_payload[1][0].as_py())['burn_block_height']
 
         dataframe = reverse_payload.to_pandas()
-        logger.info('[stacks-event-replay] /new_burn_block: %s', len(dataframe.index))
+        logger.info('[stacks-event-replay] total: %s', len(dataframe.index))
         for i, frame in dataframe.iloc[1:].iterrows():
             current_burn_block_hash = json.loads(frame['payload'])['burn_block_hash']
             current_burn_block_height = json.loads(frame['payload'])['burn_block_height']
@@ -48,9 +48,9 @@ class NewBurnBlockProcessor:
         self.dataset = pa.Table.from_pandas(dataframe)
 
         end_time = time.perf_counter()
-        logger.info('[stacks-event-replay] canonical......: %s', burn_block_canonical_count)
-        logger.info('[stacks-event-replay] orphaned.......: %s', burn_block_orphan_count)
-        logger.info(f"[stacks-event-replay] NEW_BURN_BLOCK event processor finished in {end_time - start_time:0.4f} seconds")
+        logger.info('[stacks-event-replay] canonical: %s', burn_block_canonical_count)
+        logger.info('[stacks-event-replay] orphaned: %s', burn_block_orphan_count)
+        logger.info(f"[stacks-event-replay] finished in: {end_time - start_time:0.4f} seconds")
         return self
 
     def save_dataset(self):

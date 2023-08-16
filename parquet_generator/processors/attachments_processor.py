@@ -15,14 +15,14 @@ class AttachmentsProcessor:
         self.dataset = dataset
 
     def to_canonical(self, canonical_indexes: list):
-        logger.info('[stacks-event-replay] ATTACHMENTS_NEW event processor started')
+        logger.info('[stacks-event-replay] ATTACHMENTS_NEW reorg started')
         start_time = time.perf_counter()
 
         attachment_canonical_count = 0
         attachment_orphan_count = 0
 
         dataframe = self.dataset.to_table().to_pandas()
-        logger.info('[stacks-event-replay] /attachments/new: %s', len(dataframe.index))
+        logger.info('[stacks-event-replay] total: %s', len(dataframe.index))
         for i, row in dataframe.iterrows():
             attachment_indexes = [o['index_block_hash'] for o in json.loads(row['payload'])]
             check =  all(item in canonical_indexes for item in attachment_indexes)
@@ -36,9 +36,9 @@ class AttachmentsProcessor:
         self.dataset = pa.Table.from_pandas(dataframe)
 
         end_time = time.perf_counter()
-        logger.info(f"[stacks-event-replay] canonical.......: {attachment_canonical_count}")
-        logger.info(f"[stacks-event-replay] orphaned........: {attachment_orphan_count}")
-        logger.info(f"[stacks-event-replay] ATTACHMENTS_NEW event processor finished in {end_time - start_time:0.4f} seconds")
+        logger.info(f"[stacks-event-replay] canonical: {attachment_canonical_count}")
+        logger.info(f"[stacks-event-replay] orphaned: {attachment_orphan_count}")
+        logger.info(f"[stacks-event-replay] finished in: {end_time - start_time:0.4f} seconds")
 
         return self
 
