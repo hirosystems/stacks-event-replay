@@ -1,0 +1,30 @@
+{
+  "name": "stacks-event-replay",
+  "version": "1.0.0",
+  "description": "Stacks event replay using parquest format",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hirosystems/stacks-event-replay.git"
+  },
+  "author": "Hiro Systems PBC <engineering@hiro.so> (https://hiro.so)",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/hirosystems/stacks-event-replay/issues"
+  },
+  "homepage": "https://github.com/hirosystems/stacks-event-replay#readme",
+  "devDependencies": {
+    "@semantic-release/commit-analyzer": "^10.0.1",
+    "@semantic-release/git": "^10.0.1",
+    "install": "^0.13.0",
+    "npm": "^9.8.1",
+    "semantic-release": "^21.0.7",
+    "semantic-release-docker": "^2.2.0"
+  }
+}
