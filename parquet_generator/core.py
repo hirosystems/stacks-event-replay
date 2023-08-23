@@ -6,9 +6,9 @@ import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 import pyarrow.dataset as ds
-
+import parquet_generator.helper as files_helper
 from collections import deque
-from pprint import pprint
+import dask.dataframe as dd
 
 logging.basicConfig(format='%(message)s', level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -29,6 +29,8 @@ class CoreEventsProcessor:
         self.burn_block_canonical_count = 0
         self.burn_block_orphan_count = 0
         self.last_burn_block_height = -1
+
+        self.df = None
 
     def get_microblock_hashes(self, block):
         microblocks = dict()
@@ -85,7 +87,7 @@ class CoreEventsProcessor:
 
     def tsv_entity(self):
         df_reversed = pd.DataFrame()
-        chunksize = 10 ** 6 # 1M size
+        chunksize = 10000 # rows
         with pd.read_csv(
             self.tsv_path,
             compression='gzip',
@@ -185,30 +187,32 @@ class CoreEventsProcessor:
         end_time = time.perf_counter()
         logger.info(f"[stacks-event-replay] finished in: {end_time - start_time:0.4f} seconds")
 
-        return dataframe
+        self.df = dataframe
 
-    def split(self, df_main):
+    def split(self):
         logger.info(f"[stacks-event-replay] ---| Splitting main Dataframe |---")
+
         # Limit of block_height to be replayed.
         # After this limit, events will be processed by regular HTTP POSTS.
         rewind_blocks = 256
-        max_block_height = df_main['block_height'].dropna().astype(int).max()
+        max_block_height = self.df['block_height'].dropna().astype(int).max()
         block_height_limit = str(max_block_height - rewind_blocks)
 
         # Split dataframe into two parts.
         # 1 - Events to be re-orged.
         # 2 - Remainder events to be replayed.
-        row_index_limit = df_main.query('block_height == @block_height_limit').index.to_list()[0]
-        df_to_reorg = df_main.iloc[:row_index_limit, :].copy(deep=False)
-        df_remainder = df_main.iloc[row_index_limit:, :]
+        row_index_limit = self.df.query('block_height == @block_height_limit').index.to_list()[0]
+        df_reorg = self.df.iloc[:row_index_limit, :].copy(deep=False)
+        files_helper.df_to_parquet("reorg", "events/reorg", df_reorg)
+
+        df_remainder = self.df.iloc[row_index_limit:, :]
+        files_helper.df_to_parquet("remainder", "events/remainder", df_remainder)
 
         logger.info(f"[stacks-event-replay] block height present: {max_block_height}")
         logger.info(f"[stacks-event-replay] rewinding {rewind_blocks} blocks")
         logger.info(f"[stacks-event-replay] events will be reorged until block height: {block_height_limit}")
 
-        return df_to_reorg, df_remainder
-
-    def partition(self, df) -> None:
+    def partition(self) -> None:
         """
         Create partitioned dataset from the dataframe.
         The partitions are based on the 'event' column.
@@ -217,10 +221,11 @@ class CoreEventsProcessor:
         logger.info('[stacks-event-replay] ---| Partitioning main Dataframe |---')
         start_time = time.perf_counter()
 
-        df_reversed = df.sort_index(ascending=False)
-        table = pa.Table.from_pandas(df_reversed)
+        ddf = dd.read_parquet("events/reorg")
+        df = ddf.compute()
+
         ds.write_dataset(
-            table,
+            pa.Table.from_pandas(df),
             base_dir='events',
             partitioning=['event'],
             format='parquet',

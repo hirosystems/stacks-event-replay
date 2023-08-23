@@ -17,14 +17,11 @@ if __name__ == "__main__":
     processor = CoreEventsProcessor(tsv_file)
     processor.tsv_entity()
 
-    df = processor.prepare_dataframe()
-    df_to_reorg, df_remainder = processor.split(df)
+    processor.prepare_dataframe()
+    processor.split()
 
     # partition events to be re-orged
-    processor.partition(df_to_reorg)
-
-    # create a parquet file of remainder events
-    processor.to_parquet(df_remainder)
+    processor.partition()
 
     # process new_block events to canonical data
     new_block_data = processor.get_new_block_dataset()
