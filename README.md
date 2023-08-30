@@ -29,16 +29,16 @@ $ make init
 1. Download a TSV file from the Hiro archive.
 
 ```shell
-$ curl -L https://archive.hiro.so/testnet/stacks-blockchain-api/testnet-stacks-blockchain-api-latest.gz -o ./testnet-stacks-blockchain-api-latest.gz
+$ curl -L https://archive.hiro.so/mainnet/stacks-blockchain-api/mainnet-stacks-blockchain-api-latest.gz -o ./mainnet-stacks-blockchain-api-latest.gz
 ```
 
 2. Run the parquet generator using the TSV file as input
 
 ```shell
-$ python3 -m parquet_generator --tsv-file testnet-stacks-blockchain-api-latest.gz
+$ python3 -m event_replay --tsv-file mainnet-stacks-blockchain-api-latest.gz
 ```
 
-An `events` folder is generated to contain a `dataset` that consists into subfolders and partitioned Parquet files for each event present on the original TSV file.
+An `events` folder is generated with a `dataset` that consists into subfolders and partitioned Parquet files for each event present on the original TSV file.
 
 ### Running the Events Ingestor
 
