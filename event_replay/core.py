@@ -1,21 +1,16 @@
-import logging
+import gc
 import json
 import time
 import numpy as np
 import pandas as pd
-import pyarrow as pa
-import pyarrow.parquet as pq
-import pyarrow.dataset as ds
-import parquet_generator.helper as files_helper
-from collections import deque
-import dask.dataframe as dd
+import event_replay.helper as files_helper
 
-logging.basicConfig(format='%(message)s', level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+from collections import deque
+from event_replay.base_logger import logger
 
 class CoreEventsProcessor:
     def __init__(self, tsv_path) -> None:
-        logger.info('[stacks-event-replay] Stacks events reorganization into parquet files')
+        logger.info('Stacks events reorganization into parquet files')
 
         self.tsv_path = tsv_path
         self.block_hashes = deque()
@@ -29,8 +24,6 @@ class CoreEventsProcessor:
         self.burn_block_canonical_count = 0
         self.burn_block_orphan_count = 0
         self.last_burn_block_height = -1
-
-        self.df = None
 
     def get_microblock_hashes(self, block):
         microblocks = dict()
@@ -86,6 +79,7 @@ class CoreEventsProcessor:
         self.burn_block_canonical_count += 1
 
     def tsv_entity(self):
+        logger.info('Extracting canonical indexes from TSV')
         df_reversed = pd.DataFrame()
         chunksize = 10000 # rows
         with pd.read_csv(
@@ -112,26 +106,23 @@ class CoreEventsProcessor:
             to_df.append([el[0], json.dumps(list(el[1]))])
 
         df = pd.DataFrame(to_df, columns=['index_block_hash', 'microblock'])
-        table = pa.Table.from_pandas(df)
-        ds.write_dataset(
-            table,
-            base_dir='events/canonical/block_hashes',
-            format='parquet',
-            existing_data_behavior='overwrite_or_ignore'
-        )
+        files_helper.df_to_parquet("canonical/block_hashes", df)
 
-        logger.info("[stacks-event-replay] ---| TSV file analysis |---")
-        logger.info(f"[stacks-event-replay] File: {self.tsv_path}")
-        logger.info(f"[stacks-event-replay] Lines count: {self.tsv_lines_count}")
-        logger.info(f"[stacks-event-replay] NEW_BLOCK events canonical: {self.block_canonical_count}")
-        logger.info(f"[stacks-event-replay] NEW_BLOCK events orphaned: {self.block_orphan_count}")
-        logger.info(f"[stacks-event-replay] NEW_BURN_BLOCK events canonical: {self.burn_block_canonical_count}")
-        logger.info(f"[stacks-event-replay] NEW_BURN_BLOCK events orphaned: {self.burn_block_orphan_count}")
+        logger.info("TSV report")
+        logger.info(f"---> File: {self.tsv_path}")
+        logger.info(f"---> Lines count: {self.tsv_lines_count}")
+        logger.info(f"---> NEW_BLOCK events canonical: {self.block_canonical_count}")
+        logger.info(f"---> NEW_BLOCK events orphaned: {self.block_orphan_count}")
+        logger.info(f"---> NEW_BURN_BLOCK events canonical: {self.burn_block_canonical_count}")
+        logger.info(f"---> NEW_BURN_BLOCK events orphaned: {self.burn_block_orphan_count}")
+
+        return df
 
     def prepare_dataframe(self) -> pd.DataFrame:
-        logger.info('[stacks-event-replay] ---| Preparing main Dataframe |---')
+        logger.info('Augmenting TSV data')
         start_time = time.perf_counter()
 
+        logger.info('---> reading TSV file')
         dataframe = pd.read_table(
             self.tsv_path,
             compression='gzip',
@@ -145,6 +136,7 @@ class CoreEventsProcessor:
         parent_index_block_hashes = []
         event_hashes = []
 
+        logger.info('---> augmenting data with block_height, index_block_hash')
         for _, data in dataframe.iterrows():
             payload = json.loads(data['payload'])
 
@@ -185,83 +177,55 @@ class CoreEventsProcessor:
         dataframe.insert(7, 'method', event_hashes)
 
         end_time = time.perf_counter()
-        logger.info(f"[stacks-event-replay] finished in: {end_time - start_time:0.4f} seconds")
+        logger.info(f"---> finished in: {end_time - start_time:0.4f} seconds")
 
-        self.df = dataframe
+        gc.collect()
 
-    def split(self):
-        logger.info(f"[stacks-event-replay] ---| Splitting main Dataframe |---")
+        return dataframe
+
+    def split(self, df):
+        logger.info(f"Splitting TSV dataframe")
+
+        df_new_block = df[df.event == "/new_block"]
 
         # Limit of block_height to be replayed.
         # After this limit, events will be processed by regular HTTP POSTS.
         rewind_blocks = 256
-        max_block_height = self.df['block_height'].dropna().astype(int).max()
+        max_block_height = df_new_block['block_height'].dropna().astype(int).max()
         block_height_limit = str(max_block_height - rewind_blocks)
 
         # Split dataframe into two parts.
         # 1 - Events to be re-orged.
         # 2 - Remainder events to be replayed.
-        row_index_limit = self.df.query('block_height == @block_height_limit').index.to_list()[0]
-        df_reorg = self.df.iloc[:row_index_limit, :].copy(deep=False)
-        files_helper.df_to_parquet("reorg", "events/reorg", df_reorg)
+        row_index_limit = df_new_block.query('block_height == @block_height_limit').index.to_list()[0]
+        df_core = df.iloc[:row_index_limit, :].copy(deep=False)
+        df_remainder = df.iloc[row_index_limit:, :]
 
-        df_remainder = self.df.iloc[row_index_limit:, :]
-        files_helper.df_to_parquet("remainder", "events/remainder", df_remainder)
+        logger.info(f"---> chain tip: {max_block_height}")
+        logger.info(f"---> rewinding {rewind_blocks} blocks")
+        logger.info(f"---> new chain tip: {block_height_limit}")
 
-        logger.info(f"[stacks-event-replay] block height present: {max_block_height}")
-        logger.info(f"[stacks-event-replay] rewinding {rewind_blocks} blocks")
-        logger.info(f"[stacks-event-replay] events will be reorged until block height: {block_height_limit}")
+        return df_core, df_remainder
 
-    def partition(self) -> None:
+    def partition_prunable(self, df) -> None:
         """
         Create partitioned dataset from the dataframe.
         The partitions are based on the 'event' column.
         """
 
-        logger.info('[stacks-event-replay] ---| Partitioning main Dataframe |---')
-        start_time = time.perf_counter()
+        logger.info('Partitioning prunable events')
 
-        ddf = dd.read_parquet("events/reorg")
-        df = ddf.compute()
+        prunable_events = [
+            "/drop_mempool_tx",
+            "/new_mempool_tx",
+            "/new_microblocks"
+        ]
 
-        ds.write_dataset(
-            pa.Table.from_pandas(df),
-            base_dir='events',
-            partitioning=['event'],
-            format='parquet',
-            existing_data_behavior='overwrite_or_ignore'
-        )
+        for prunable in prunable_events:
+            df_filtered = df.query('event == @prunable')
+            files_helper.df_to_parquet(prunable, df_filtered)
 
-        end_time = time.perf_counter()
-        logger.info(f'[stacks-event-replay] finished in: {end_time - start_time:0.4f} seconds')
+    def remainder_to_parquet(self, df):
+        logger.info('Creating parquet for remainder events')
 
-    def to_parquet(self, dataframe) -> None:
-        logger.info('[stacks-event-replay] ---| Create parquet for remainder events |---')
-        table = pa.Table.from_pandas(dataframe)
-        ds.write_dataset(
-            table,
-            base_dir='events/remainder',
-            format='parquet',
-            existing_data_behavior='overwrite_or_ignore'
-        )
-
-    def get_new_block_dataset(self) -> pq.ParquetDataset:
-        """
-        Get new_block dataset
-        """
-
-        return ds.dataset('events/new_block/part-0.parquet', format="parquet")
-
-    def get_attachments_dataset(self) -> pq.ParquetDataset:
-        """
-        Get new_block dataset
-        """
-
-        return ds.dataset('events/attachments/new/part-0.parquet', format="parquet")
-
-    def get_new_burn_block_dataset(self) -> pq.ParquetDataset:
-        """
-        Get new_burn_block dataset
-        """
-
-        return ds.dataset('events/new_burn_block/part-0.parquet', format='parquet')
+        files_helper.df_to_parquet("remainder", df)
