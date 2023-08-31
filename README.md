@@ -38,8 +38,22 @@ $ curl -L https://archive.hiro.so/mainnet/stacks-blockchain-api/mainnet-stacks-b
 $ python3 -m event_replay --tsv-file mainnet-stacks-blockchain-api-latest.gz
 ```
 
-An `events` folder is generated with a `dataset` that consists into subfolders and partitioned Parquet files for each event present on the original TSV file.
+An `events` folder is generated with a `dataset` that consists into subfolders and partitioned Parquet files for each event type present in the TSV file.
 
 ### Running the Events Ingestor
 
-TBD
+1. Run the events ingestion inside the [stacks-blockchain-api](https://github.com/hirosystems/stacks-blockchain-api) root folder.
+
+```shell
+$ STACKS_EVENTS_DIR="<EVENTS_FOLDER>" NODE_OPTIONS="--max-old-space-size=8192" STACKS_CHAIN_ID=<STACKS_CHAIN> node ./lib/index.js from-parquet-events --workers=<PARALLEL_WORKERS>
+```
+
+where:
+
+`STACKS_EVENTS_DIR` is the path to the `events` folder.
+
+`PARALLEL_WORKERS` is the number of workers that will run in parallel. Tests were done using a range between 4 and 8. Spawning several workers can lead to exhaustion of computational resources.
+
+## REMARKS
+
+**WARNING:** Running the event-replay will **wipe out** the stacks-blockchain-api postgres database. The event-replay is a process that deals with a huge ammount of data. Thus, is need a database in a mint state.
